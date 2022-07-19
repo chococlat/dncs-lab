@@ -177,3 +177,107 @@ In the following table there are the addresses of all the nodes that we are usin
 | router-2|enp0s9 (eth-2)|  192.168.255.2|  R-Subnet |
 
 
+![table](https://github.com/chococlat/dncs-lab/blob/master/image.jpg)
+
+**In the Vagrantfile some tweaking is made:**
+The path for each script (include the already existing switch.sh) is changed. Now all the scripts are in a folder called shell_scripts.
+
+`router1.vm.provision "shell", path: "shell_scripts/router-1.sh"`
+
+In the host-c section the memory is increased to 512 to accomadate the docker image later:
+
+    config.vm.define "host-c" do |hostc| 
+    hostc.vm.box = "ubuntu/bionic64" 
+    hostc.vm.hostname = "host-c" 
+    hostc.vm.network "private_network", virtualbox__intnet: "broadcast_router-south-2", auto_config: false 
+    hostc.vm.provision "shell", path: "shell_scripts/host-c.sh" 
+    hostc.vm.provider "virtualbox" do |vb| 
+    vb.memory = 512
+    end 
+    end
+
+
+**The scripts:**
+ Commands used:
+ - *sudo sysctl -w net.ipv4.ip_forward=1*________________________to enable IP forwarding
+ - *sudo ip addr add [address/sn] dev [interface]*________________to associate an IP address
+ - *sudo ip link set dev [interface] up*___________________________to activate an interface
+ - *sudo ip link add link [interface] name [interface_name] type vlan id [tag]*________to add a VLAN tag on a specific interface
+ - *sudo ip route add [address/sn] via [address]*__________Create a route that takes all the traffic to an address or subnet and redirects it to another address.
+
+Router-1.sh and Router-2.sh: 
+
+    export DEBIAN_FRONTEND=noninteractive 
+    sudo sysctl -w net.ipv4.ip_forward=1                                                           
+    sudo ip addr add 192.168.255.1/30 dev enp0s9
+    sudo ip link set dev enp0s9 up
+    sudo ip link add link enp0s8 name enp0s8.1 type vlan id 1                    
+    sudo ip link add link enp0s8 name enp0s8.2 type vlan id 2
+    sudo ip addr add 192.168.0.1/23 dev enp0s8.1
+    sudo ip addr add 192.168.64.1/24 dev enp0s8.2
+    sudo ip link set dev enp0s8 up
+    sudo ip route add 192.168.128.0/23 via 192.168.255.2
+---
+    export DEBIAN_FRONTEND=noninteractive
+    sudo sysctl -w net.ipv4.ip_forward=1
+    sudo ip addr add 192.168.255.2/30 dev enp0s9
+    sudo ip link set dev enp0s9 up
+    sudo ip addr add 192.168.128.1/23 dev enp0s8
+    sudo ip link set dev enp0s8 up
+    sudo ip route add 192.168.128.0/23 via 192.168.255.2
+    sudo ip route add 192.168.0.0/17 via 192.168.255.1
+
+The main difference is that router-1 includes rules for the VLANs, router-2 doesn't. Also the last line of the router-2 script is more general, using a mask of only 17, with the objective to target at the same time host-a and host-b, but not host-c.
+
+In the host-a.sh, host-b.sh script the configuration is minimal and very similar. The port is associated with the address and then 2 routes are created, the first one is for reaching the R-Subnet, the last one for reaching any of the hosts, by using a mask of 16:
+
+    export DEBIAN_FRONTEND=noninteractive
+    sudo ip addr add 192.168.0.2/23 dev enp0s8
+    sudo ip link set dev enp0s8 up
+    sudo ip route add 192.168.255.0/30 via 192.168.0.1
+    sudo ip route add 192.168.0.0/16 via 192.168.0.1
+---
+    export DEBIAN_FRONTEND=noninteractive
+    sudo ip addr add 192.168.64.2/24 dev enp0s8
+    sudo ip link set dev enp0s8 up
+    sudo ip route add 192.168.255.0/30 via 192.168.64.1
+    sudo ip route add 192.168.0.0/16 via 192.168.64.1
+
+In host-3.sh some lines are added to install and run the docker image, and then to forward it on the port 80:
+
+    export DEBIAN_FRONTEND=noninteractive
+    sudo apt-get update
+    sudo apt -y install docker.io
+    sudo systemctl start docker
+    sudo systemctl enable docker
+    sudo docker pull dustnic82/nginx-test
+    sudo docker run --name nginx -p 80:80 -d dustnic82/nginx-test
+    sudo ip addr add 192.168.128.2/23 dev enp0s8
+    sudo ip link set dev enp0s8 up
+    sudo ip route add 192.168.255.0/30 via 192.168.128.1
+    sudo ip route add 192.168.0.0/16 via 192.168.128.1
+
+Then, in the swithc.sh file:
+
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y tcpdump
+    apt-get install -y openvswitch-common openvswitch-switch apt-transport-https ca-certificates curl software-properties-common
+    sudo ovs-vsctl add-br switch
+    sudo ovs-vsctl add-port switch enp0s8
+    sudo ovs-vsctl add-port switch enp0s9 tag="1"
+    sudo ovs-vsctl add-port switch enp0s10 tag="2"
+    sudo ip link set dev enp0s8 up
+    sudo ip link set dev enp0s9 up
+    sudo ip link set dev enp0s10 up
+
+The first lines are used to install openvswitch and tcpdump, then a bridge is added, followed by the 3 ports that we will be using, 2 wich are for the 2 VLANs. Then the ports are activated.
+
+After a successful `vagrant up` output, using the following commands the network is tested:
+
+- vagrant ssh [host-a, host-b, etc.]              To establish the VM control
+- ping -c3 [address]                                       To ping the various nodes
+- tracepath [address]                                     To trace the route of the packages and see where they are redirected
+- curl 192.168.128.2                                     To pull the docker image information on host-c (from host-a or b)
+
+All the hosts are reachable within eachother, and the curl command gives the correct output. 
