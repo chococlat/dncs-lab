@@ -1,0 +1,18 @@
+FirstName: Alessandro
+LastName: Ceccarini
+MatriculationNumber: 186409
+AcademicYear: 2021-2022
+GitHubUrl: https://github.com/chococlat/dncs-lab/
+Subnets:
+  HostsA:
+    RequiredAddresses: 509
+    SubnetAddress: 192.168.0.0
+    SubnetPrefixLength: 23
+  HostsB:
+    RequiredAddresses: 188
+    SubnetAddress: 192.168.64.0
+    SubnetPrefixLength: 24
+  Hub:
+    RequiredAddresses: 404
+    SubnetAddress: 192.168.128.0
+    SubnetPrefixLength: 23
