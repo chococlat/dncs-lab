@@ -125,8 +125,55 @@ The following values for the number of addresses were given:
 
 To achieve that the following choices have been made:
 
-Subnet 1[Host-a -> Router-1]: Required 509 ____  2^(32-23)-2 = 512-2 = 510:
--Subnet mask: 11111111.11111111.11111110.00000000          ( 255.255.254.0 )
--Chosen IP:      11000000.10101000.00000000.00000000           ( 192.168.0.0/23 )
--Range usable addresses: [192.168.0.1 ->  192.168.1.254]
+**Hosts-A** [Host-a -> Router-1]: Required 509 ---  2^(32-23)-2 = 512-2 = 510
+- Subnet mask: 11111111.11111111.11111110.00000000          ( 255.255.254.0 )
+- Chosen IP:      11000000.10101000.0000000|0.00000000           ( 192.168.0.0/23 )
+- Range usable addresses: [192.168.0.1 ->  192.168.1.254]
+
+**Hosts-B** [Host-b -> Router-1]: Required 188 ---  2^(32-24)-2 = 256-2 = 254
+- Subnet mask: 11111111.11111111.11111111.00000000  ( 255.255.255.0 )
+- Chosen IP: 11000000.10101000.01000000.|00000000  ( 192.168.64.0/24 )
+- Range usable addresses: [192.168.64.1 -> 192.168.64.254]
+
+**Hub** [Host-c -> Router 2]: Required 404 ---  2^(32-23)-2 = 512-2 = 510
+- Subnet mask: 11111111.11111111.11111110.00000000  ( 255.255.254.0 )
+- Chosen IP: 11000000.10101000.1000000|0.00000000  ( 192.168.128.0/23 )
+- Range usable addresses: [192.168.128.1 -> 192.168.129.254]
+
+Additional subnet for the 2 routers:
+
+**R-Subnet** [Router-1 -> Router-2]: Required 2 ____ 2^(32-30)-2=4-2=2:
+- Subnet mask: 11111111.11111111.11111111.11111100  (255.255.255.252)
+- Chosen IP:  11000000.10101000.11111111.000000|00  (192.168.255.0/30)
+- Range usable addresses: [192.168.255.1 -> 192.168.255.2]
+
+After logging in ssh in each virtual machine, the `$ dmesg | grep -i  eth` command has been used to match the eth-x namespace with the enp0s-x one in Vagrant. The relevant part of the output was:
+
+
+- **router-1** and **router-2**:
+enp0s3: renamed from eth0
+enp0s8: renamed from eth1
+enp0s9: renamed from eth2
+- **host-a**, **host-b** and **host-c**:
+enp0s3: renamed from eth0
+enp0s8: renamed from eth1
+- **switch**:
+enp0s3: renamed from eth0
+enp0s8: renamed from eth1
+enp0s9: renamed from eth2
+enp0s10: renamed from eth3
+
+In the following table there are the addresses of all the nodes that we are using and the relative interfaces.
+
+| VM| Port/Interface|   IP address |  Subnet |
+|----|----|---------------|-----|
+| host-a|enp0s8 (eth-1)|  192.168.0.1|  Hosts-A |
+| router-1|enp0s8.1 (eth-1)|  192.168.0.2|  Hosts-A |
+| host-b|enp0s8 (eth-1)|  192.168.64.1|  Hosts-B |
+| router-1|enp0s8.2 (eth-1)|  192.168.64.2|  Hosts-B |
+| host-c|enp0s8 (eth-1)|  192.168.128.1|  Hub |
+| router-2|enp0s8 (eth1)|  192.168.128.2|  Hub |
+| router-1|enp0s9 (eth-2)|  192.168.255.1|  R-Subnet |
+| router-2|enp0s9 (eth-2)|  192.168.255.2|  R-Subnet |
+
 
