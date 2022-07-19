@@ -117,4 +117,16 @@ The assignment deliverable consists of a Github repository containing:
 
 
 # Design
-[ Your work goes here ]
+
+The following values for the number of addresses were given:
+- *Hosts-A* : 509 usable addresses
+- *Hosts-B* : 188 usable addresses
+- *Hub* : 404 usable addresses
+
+To achieve that the following choices have been made:
+
+Subnet 1[Host-a -> Router-1]: Required 509 ____  2^(32-23)-2 = 512-2 = 510:
+-Subnet mask: 11111111.11111111.11111110.00000000          ( 255.255.254.0 )
+-Chosen IP:      11000000.10101000.00000000.00000000           ( 192.168.0.0/23 )
+-Range usable addresses: [192.168.0.1 ->  192.168.1.254]
+
